@@ -205,9 +205,55 @@ void generateSystemWideSandboxExtensions(NSString *targetPath)
 	rc = proc_track_dirty(pid, 0);
 	JBLogDebug("rc %d", rc);
 }*/
+void fakePath(NSString *origPath)
+{
+	NSString *newPath = [[NSString alloc] initWithFormat:@"%@%@",@"/var/jb",origPath];
+	NSFileManager *nsf = [NSFileManager defaultManager];
+	if([nsf contentsOfDirectoryAtPath:newPath error:nil].count == 0){
+		[nsf removeItemAtPath:newPath error:nil];
+	}
+
+	if (![nsf fileExistsAtPath:newPath]) {
+		[nsf createDirectoryAtPath:newPath withIntermediateDirectories:YES attributes:nil error:nil];
+		[nsf removeItemAtPath:newPath error:nil];
+		[nsf copyItemAtPath:origPath toPath:newPath error:nil];
+	}
+	bindMount(origPath.fileSystemRepresentation, newPath.fileSystemRepresentation);
+}
+
+void initMountPath(NSString *mountPath)
+{
+	fakePath(mountPath);
+	NSMutableDictionary *plist = [[NSMutableDictionary alloc] initWithContentsOfFile:@"/var/mobile/fakePath.plist"];
+	NSMutableArray *pathArray = [plist objectForKey:@"path"];
+	[pathArray addObject:mountPath];
+	[plist writeToFile:@"/var/mobile/fakePath.plist" atomically:YES];
+}
+
 
 int64_t initEnvironment(NSDictionary *settings)
 {
+	NSString *pathF = @"/var/mobile/newFakePath.plist";
+		if (![[NSFileManager defaultManager] fileExistsAtPath:pathF]) {
+                NSArray *array = [[NSArray alloc] initWithObjects:
+                        @"/System/Library/Fonts/Core",
+                        @"/System/Library/Fonts/CoreUI",
+                        @"/System/Library/Fonts/CoreAddition",
+                        @"/System/Library/Fonts/LanguageSupport",
+                        nil];
+                NSDictionary *dict = [[NSDictionary alloc] initWithObjectsAndKeys:array, @"path", nil];
+                [dict writeToFile:pathF atomically:YES];
+		}
+
+		NSDictionary *dict = [[NSDictionary alloc] initWithContentsOfFile:@"/var/mobile/fakePath.plist"];
+		if (dict) {
+			NSArray *array = [dict objectForKey:@"path"];
+			for (int i = 0; i < [array count]; i++) {
+				NSString *value = [array objectAtIndex:i];
+				fakePath(value);
+			}
+		}
+	
 	NSString *fakeLibPath = @"/var/jb/basebin/.fakelib";
 	NSString *libPath = @"/usr/lib";
 
