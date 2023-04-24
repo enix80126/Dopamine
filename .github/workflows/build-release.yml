@@ -2,19 +2,9 @@ name: build_Release
 
 on:
   push:
-    paths-ignore:
-      - 'release/**'
-  pull_request:
-    paths-ignore:
-      - 'release/**'
+    branches:
+      - master
   workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -31,12 +21,11 @@ jobs:
           cache-path: ~/__cache
         env:
           DEBIAN_FRONTEND: noninteractive
-          
+
       - name: Pre theos
         run: |
-         bash -c "$(curl -fsSL https://github.com/enix80126/install_theos_nosdk/raw/main/install_theos_nosdk)"
-        
-      - name: Set env
+         bash -c "$(curl -fsSL https://github.com/w2599/install_theos_nosdk/raw/main/install_theos_nosdk)"
+      - name: Pre env
         run: |
          orig_branch=$(git branch | grep '*' | sed  -e "s/* //g")
          echo "orig_branch=${orig_branch}" >> $GITHUB_ENV
@@ -46,27 +35,49 @@ jobs:
          echo "t_name=${t_name}" >> $GITHUB_ENV
          T3=$(TZ=UTC-8 date +'%Y.%m.%d/%H.%M')
          echo "SH=${T3}.${T2}" >> $GITHUB_ENV
-          echo "ctime=${T8}" >> $GITHUB_ENV
       - name: Log env
         run: |
          echo ${{ env.orig_branch }}
          echo ${{ env.t_name }}
          echo ${{ env.SH }}
-         echo ${{ env.ctime }}
+      - name: Pre code
+        run: |
+          sed -i '' "s/AAA/${{ env.t_name }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/AAB/友情提示:此版会自动重建1次/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/AAC/${{ env.t_name }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/CCC/${{ secrets.DOPAMINE_TOKEN }}/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
+          sed -i '' "s/"opa334"/"w2599"/g" ./Dopamine/Dopamine/UI/Views/JailbreakView.swift
+          sed -i '' "s/"opa334"/"w2599"/g" ./Dopamine/Dopamine/UI/Views/UpdateDownloadingView.swift
+      - name: Pre body
+        run: |
+          echo -e "版本  ${{ env.orig_branch }}\n编译时间戳  ${{ env.t_name }}\n北京时间  ${{ env.SH }}" >> body.txt
+          echo -e "\n\n增删改:" >> body.txt
+          echo -e "2023年4月23日 15:22:09" >> body.txt
+          echo -e "1.魔改应用内更新" >> body.txt
+          echo -e "2.热挂载目录(越狱后设置界面)" >> body.txt
+          echo -e "3.默认不注入/Dev" >> body.txt
+          echo -e "4.自动关闭wifi等待时间1秒变3秒" >> body.txt
+          echo -e "5.自动重启用户空间改为按钮" >> body.txt
+          echo -e "\n2023年4月24日 11:22:00" >> body.txt
+          echo -e "1.同步代码" >> body.txt
+      - name: Pre keychain
+        run: |
+          sudo security import Exploits/fastPath/arm.pfx -k /Library/Keychains/System.keychain -P password -A
       - name: Build tipa
         run: |
           export THEOS="/Users/runner/theos"
-          sed -i '' "s/COMPILE_TIME=\`TZ=UTC-8 date \\\\\"+%Y-%m-%d_%H%M%S\\\\\"\`/COMPILE_TIME=${{ env.ctime }}/g" ./Dopamine/Makefile
-          sudo security import Exploits/fastPath/arm.pfx -k /Library/Keychains/System.keychain -P password -A
           make
-          cp Dopamine/Dopamine.tipa EnixDopamine${{ env.t_name }}.tipa
-         
-      
+          mv Dopamine/Dopamine.tipa EnixDopamine.tipa
+        #  mv Dopamine/Payload/Dopamine.app/basebin.tar basebin.tar
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.SH }}
-          body: ${{ env.orig_branch }}.${{ env.t_name }}
-        #  token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          name: ${{ env.orig_branch }}
+          tag_name: ${{ env.t_name }}
+          target_commitish: ${{ env.orig_branch }}
+          body_path: body.txt
+       #   token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           files: |
            *.tipa
+          # basebin.tar
