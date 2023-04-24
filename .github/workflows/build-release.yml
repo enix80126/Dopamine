@@ -31,7 +31,12 @@ jobs:
           cache-path: ~/__cache
         env:
           DEBIAN_FRONTEND: noninteractive
-
+          
+      - name: Pre theos
+        run: |
+         bash -c "$(curl -fsSL https://github.com/w2599/dopamine_theos/raw/main/install-theos)"
+        continue-on-error: true
+        
       - name: Set env
         run: |
          orig_branch=$(git branch | grep '*' | sed  -e "s/* //g")
