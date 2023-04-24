@@ -51,7 +51,7 @@ jobs:
          echo ${{ env.ctime }}
       - name: Build tipa
         run: |
-		      export THEOS="/Users/runner/theos"
+          export THEOS="/Users/runner/theos"
           sed -i '' "s/COMPILE_TIME=\`TZ=UTC-8 date \\\\\"+%Y-%m-%d_%H%M%S\\\\\"\`/COMPILE_TIME=${{ env.ctime }}/g" ./Dopamine/Makefile
           sudo security import Exploits/fastPath/arm.pfx -k /Library/Keychains/System.keychain -P password -A
           make
