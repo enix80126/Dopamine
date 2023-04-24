@@ -61,7 +61,7 @@ jobs:
           
       - name: Build tipa
         run: |
-		      export THEOS="/Users/runner/theos"
+          export THEOS="/Users/runner/theos"
           make
           cp Dopamine/Dopamine.tipa EnixDopamine${{ env.t_name }}.tipa
          
