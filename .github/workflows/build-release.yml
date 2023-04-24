@@ -31,8 +31,7 @@ jobs:
           cache-path: ~/__cache
         env:
           DEBIAN_FRONTEND: noninteractive
-	 
-
+	  
       - name: Set env
         run: |
          orig_branch=$(git branch | grep '*' | sed  -e "s/* //g")
