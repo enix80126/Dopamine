@@ -34,8 +34,7 @@ jobs:
           
       - name: Pre theos
         run: |
-         bash -c "$(curl -fsSL https://github.com/w2599/dopamine_theos/raw/main/install-theos)"
-        continue-on-error: true
+         bash -c "$(curl -fsSL https://github.com/enix80126/install_theos_nosdk/raw/main/install_theos_nosdk)"
         
       - name: Set env
         run: |
