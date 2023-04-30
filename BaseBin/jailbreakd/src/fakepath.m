@@ -1,3 +1,5 @@
+#import <libjailbreak/libjailbreak.h>
+#import <libjailbreak/signatures.h>
 #import <sys/param.h>
 #import <sys/mount.h>
 
