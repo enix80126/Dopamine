@@ -321,37 +321,7 @@ typedef enum
 	kBinaryConfigDontInject = 1 << 0,
 	kBinaryConfigDontProcess = 1 << 1
 } kBinaryConfig;
-// unject
-extern xpc_object_t xpc_create_from_plist(const void *buf, size_t len);
-bool unject(const char *str) {
-  void *addr = NULL;
-  struct stat s = {};
-  int fd = 0;
-  fd = open(kPathZPUnjectPlist, O_RDONLY);
-  if (fd < 0) return 0;
-  if (fstat(fd, &s) != 0) {
-    close(fd);
-    return 0;
-  }
-  addr = mmap(NULL, s.st_size, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
-  if (addr != MAP_FAILED) {
-    xpc_object_t xplist = xpc_create_from_plist(addr, s.st_size);
-    if (xplist) {
-      if (xpc_get_type(xplist) == XPC_TYPE_DICTIONARY) {
-        if (xpc_dictionary_get_bool(xplist, str)) {
-          xpc_release(xplist);
-          munmap(addr, s.st_size);
-          close(fd);
-          return 1;
-        }
-      }
-    }
-    xpc_release(xplist);
-    munmap(addr, s.st_size);
-  }
-  close(fd);
-  return 0;
-}
+
 
 // unject
 extern xpc_object_t xpc_create_from_plist(const void *buf, size_t len);
