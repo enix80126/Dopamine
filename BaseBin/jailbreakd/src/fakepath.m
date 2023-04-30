@@ -1,5 +1,9 @@
+#import <Foundation/Foundation.h>
 #import <libjailbreak/libjailbreak.h>
 #import <libjailbreak/signatures.h>
+#import <sandbox.h>
+#import "dyld_patch.h"
+#import "trustcache.h"
 #import <sys/param.h>
 #import <sys/mount.h>
 
