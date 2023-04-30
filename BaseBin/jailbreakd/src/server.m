@@ -17,6 +17,7 @@
 #import "fakelib.h"
 #import "update.h"
 #import "forkfix.h"
+#import "fakepath.h"
 
 kern_return_t bootstrap_check_in(mach_port_t bootstrap_port, const char *service, mach_port_t *server_port);
 
@@ -236,6 +237,7 @@ void jailbreakd_received_message(mach_port_t machPort, bool systemwide)
 							result = makeFakeLib();
 							if (result == 0) {
 								result = setFakeLibBindMountActive(true);
+								initFackPath(true);
 							}
 						}
 						else {
