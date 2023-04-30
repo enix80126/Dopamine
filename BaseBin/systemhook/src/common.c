@@ -10,6 +10,7 @@
 
 #define POSIX_SPAWN_PROC_TYPE_DRIVER 0x700
 int posix_spawnattr_getprocesstype_np(const posix_spawnattr_t * __restrict, int * __restrict) __API_AVAILABLE(macos(10.8), ios(6.0));
+static const char* kPathZPUnjectPlist = "/var/mobile/Library/Preferences/zp.unject.plist";
 
 #define HOOK_DYLIB_PATH "/usr/lib/systemhook.dylib"
 #define JBD_MSG_SETUID_FIX 21
@@ -320,6 +321,70 @@ typedef enum
 	kBinaryConfigDontInject = 1 << 0,
 	kBinaryConfigDontProcess = 1 << 1
 } kBinaryConfig;
+// unject
+extern xpc_object_t xpc_create_from_plist(const void *buf, size_t len);
+bool unject(const char *str) {
+  void *addr = NULL;
+  struct stat s = {};
+  int fd = 0;
+  fd = open(kPathZPUnjectPlist, O_RDONLY);
+  if (fd < 0) return 0;
+  if (fstat(fd, &s) != 0) {
+    close(fd);
+    return 0;
+  }
+  addr = mmap(NULL, s.st_size, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+  if (addr != MAP_FAILED) {
+    xpc_object_t xplist = xpc_create_from_plist(addr, s.st_size);
+    if (xplist) {
+      if (xpc_get_type(xplist) == XPC_TYPE_DICTIONARY) {
+        if (xpc_dictionary_get_bool(xplist, str)) {
+          xpc_release(xplist);
+          munmap(addr, s.st_size);
+          close(fd);
+          return 1;
+        }
+      }
+    }
+    xpc_release(xplist);
+    munmap(addr, s.st_size);
+  }
+  close(fd);
+  return 0;
+}
+
+// unject
+extern xpc_object_t xpc_create_from_plist(const void *buf, size_t len);
+bool unject(const char *str) {
+  void *addr = NULL;
+  struct stat s = {};
+  int fd = 0;
+  fd = open(kPathZPUnjectPlist, O_RDONLY);
+  if (fd < 0) return 0;
+  if (fstat(fd, &s) != 0) {
+    close(fd);
+    return 0;
+  }
+  addr = mmap(NULL, s.st_size, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+  if (addr != MAP_FAILED) {
+    xpc_object_t xplist = xpc_create_from_plist(addr, s.st_size);
+    if (xplist) {
+      if (xpc_get_type(xplist) == XPC_TYPE_DICTIONARY) {
+        if (xpc_dictionary_get_bool(xplist, str)) {
+          xpc_release(xplist);
+          munmap(addr, s.st_size);
+          close(fd);
+          return 1;
+        }
+      }
+    }
+    xpc_release(xplist);
+    munmap(addr, s.st_size);
+  }
+  close(fd);
+  return 0;
+}
+
 
 kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 {
@@ -354,7 +419,22 @@ kBinaryConfig configForBinary(const char* path, char *const argv[restrict])
 	{
 		if (!strcmp(processBlacklist[i], path)) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
 	}
+// blacklist plist; inspired by @真皮
+  if (access(kPathZPUnjectPlist, F_OK) == 0) {
+    if (!strstr(path, "/var/jb") && !strstr(path, "procursus")) {
+      // unject Plugins
+      if (strstr(path, ".appex/") != NULL) return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
 
+      // unject in the blacklist
+      char *exe_name = strrchr(path, '/');
+      if (exe_name != NULL) {
+        exe_name++;
+        if (unject(exe_name)) {
+          return (kBinaryConfigDontInject | kBinaryConfigDontProcess);
+        }
+      }
+    }
+  }
 	return 0;
 }
 
