@@ -21,9 +21,9 @@ static void (*_libSystem_atfork_child)(void) = 0;
 static void **_libSystem_atfork_prepare_V2_ptr = 0;
 static void **_libSystem_atfork_parent_V2_ptr = 0;
 static void **_libSystem_atfork_child_V2_ptr = 0;
-static void (*_libSystem_atfork_prepare_V2)(int) = 0;
-static void (*_libSystem_atfork_parent_V2)(int) = 0;
-static void (*_libSystem_atfork_child_V2)(int) = 0;
+static void (*_libSystem_atfork_prepare_V2)(int, ...) = 0;
+static void (*_libSystem_atfork_parent_V2)(int, ...) = 0;
+static void (*_libSystem_atfork_child_V2)(int, ...) = 0;
 
 int childToParentPipe[2];
 int parentToChildPipe[2];
@@ -42,9 +42,9 @@ void loadPrivateSymbols(void) {
 	if (_libSystem_atfork_prepare_ptr) _libSystem_atfork_prepare = (void (*)(void))*_libSystem_atfork_prepare_ptr;
 	if (_libSystem_atfork_parent_ptr) _libSystem_atfork_parent = (void (*)(void))*_libSystem_atfork_parent_ptr;
 	if (_libSystem_atfork_child_ptr) _libSystem_atfork_child = (void (*)(void))*_libSystem_atfork_child_ptr;
-	if (_libSystem_atfork_prepare_V2_ptr) _libSystem_atfork_prepare_V2 = (void (*)(int))*_libSystem_atfork_prepare_V2_ptr;
-	if (_libSystem_atfork_parent_V2_ptr) _libSystem_atfork_parent_V2 = (void (*)(int))*_libSystem_atfork_parent_V2_ptr;
-	if (_libSystem_atfork_child_V2_ptr) _libSystem_atfork_child_V2 = (void (*)(int))*_libSystem_atfork_child_V2_ptr;
+	if (_libSystem_atfork_prepare_V2_ptr) _libSystem_atfork_prepare_V2 = (void (*)(int, ...))*_libSystem_atfork_prepare_V2_ptr;
+	if (_libSystem_atfork_parent_V2_ptr) _libSystem_atfork_parent_V2 = (void (*)(int, ...))*_libSystem_atfork_parent_V2_ptr;
+	if (_libSystem_atfork_child_V2_ptr) _libSystem_atfork_child_V2 = (void (*)(int, ...))*_libSystem_atfork_child_V2_ptr;
 
 	void *systemhookHandle = dlopen("/usr/lib/systemhook.dylib", RTLD_NOW);
 	jbdswForkFix = dlsym(systemhookHandle, "jbdswForkFix");
@@ -108,7 +108,7 @@ __attribute__((visibility ("default"))) pid_t forkfix___fork(void)
 	return pid;
 }
 
-__attribute__((visibility ("default"))) pid_t forkfix_fork(int is_vfork, bool mightHaveDirtyPages)
+__attribute__((visibility ("default"))) pid_t forkfix_fork(bool is_vfork, bool mightHaveDirtyPages)
 {
 	int ret;
 
