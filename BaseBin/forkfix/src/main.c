@@ -8,30 +8,6 @@ extern kern_return_t mach_vm_region_recurse(vm_map_read_t target_task, mach_vm_a
 #include <signal.h>
 #include "substrate.h"
 #include <dlfcn.h>
-#include <libproc.h>
-
-struct proc_taskinfo {
-	uint64_t                pti_virtual_size;       /* virtual memory size (bytes) */
-	uint64_t                pti_resident_size;      /* resident memory size (bytes) */
-	uint64_t                pti_total_user;         /* total time */
-	uint64_t                pti_total_system;
-	uint64_t                pti_threads_user;       /* existing threads only */
-	uint64_t                pti_threads_system;
-	int32_t                 pti_policy;             /* default policy for new threads */
-	int32_t                 pti_faults;             /* number of page faults */
-	int32_t                 pti_pageins;            /* number of actual pageins */
-	int32_t                 pti_cow_faults;         /* number of copy-on-write faults */
-	int32_t                 pti_messages_sent;      /* number of messages sent */
-	int32_t                 pti_messages_received;  /* number of messages received */
-	int32_t                 pti_syscalls_mach;      /* number of mach system calls */
-	int32_t                 pti_syscalls_unix;      /* number of unix system calls */
-	int32_t                 pti_csw;                /* number of context switches */
-	int32_t                 pti_threadnum;          /* number of threads in the task */
-	int32_t                 pti_numrunning;         /* number of running threads */
-	int32_t                 pti_priority;           /* task priority*/
-};
-#define PROC_PIDTASKINFO		4
-#define PROC_PIDTASKINFO_SIZE		(sizeof(struct proc_taskinfo))
 
 int64_t (*jbdswForkFix)(pid_t childPid, bool mightHaveDirtyPages);
 
@@ -48,6 +24,9 @@ static void **_libSystem_atfork_child_V2_ptr = 0;
 static void (*_libSystem_atfork_prepare_V2)(int) = 0;
 static void (*_libSystem_atfork_parent_V2)(int) = 0;
 static void (*_libSystem_atfork_child_V2)(int) = 0;
+
+int childToParentPipe[2];
+int parentToChildPipe[2];
 
 void loadPrivateSymbols(void) {
 	MSImageRef libSystemCHandle = MSGetImageByName("/usr/lib/system/libsystem_c.dylib");
@@ -71,47 +50,49 @@ void loadPrivateSymbols(void) {
 	jbdswForkFix = dlsym(systemhookHandle, "jbdswForkFix");
 }
 
-typedef struct {
-	mach_vm_address_t address;
-	mach_vm_size_t size;
-	vm_prot_t prot;
-	vm_prot_t maxprot;
-} mem_region_info_t;
-
-int region_count = 0;
-mem_region_info_t *regions = NULL;
-
 void child_fixup(void)
 {
 	// late fixup, normally done in ASM
-	// ASM is a bitch though and I couldn't out how to do this
+	// ASM is a bitch though and I couldn't figure out how to do this
 	extern pid_t _current_pid;
 	_current_pid = 0;
 
-	// suspend ourselves to wait for the parent process to run fixups
-	ffsys_pid_suspend(ffsys_getpid());
+	ffsys_close(parentToChildPipe[1]);
+	ffsys_close(childToParentPipe[0]);
+
+	// Tell parent we are waiting for fixup now
+	char msg = ' ';
+	ffsys_write(childToParentPipe[1], &msg, sizeof(msg));
+
+	// Wait until parent completes fixup
+	ffsys_read(parentToChildPipe[0], &msg, sizeof(msg));
+
+	ffsys_close(parentToChildPipe[0]);
+	ffsys_close(childToParentPipe[1]);
 }
 
 void parent_fixup(pid_t childPid, bool mightHaveDirtyPages)
 {
-	// Wait until the child is suspended
-	struct proc_taskinfo taskinfo;
-	int ret;
-	do {
-		ret = proc_pidinfo(childPid, PROC_PIDTASKINFO, 0, &taskinfo, sizeof(taskinfo));
-		if (ret <= 0) {
-			kill(childPid, SIGKILL);
-			abort();
-		}
-	} while (taskinfo.pti_numrunning != 0);
-	// Child is waiting for wx_allowed + permission fixups now
+	close(parentToChildPipe[0]);
+	close(childToParentPipe[1]);
 
+	// Wait until the child is ready and waiting
+	char msg = ' ';
+	read(childToParentPipe[0], &msg, sizeof(msg));
+
+	// Child is waiting for wx_allowed + permission fixups now
 	// Apply fixup
 	int64_t fix_ret = jbdswForkFix(childPid, mightHaveDirtyPages);
 	if (fix_ret != 0) {
 		kill(childPid, SIGKILL);
 		abort();
 	}
+
+	// Tell child we are done, this will make it resume
+	write(parentToChildPipe[1], &msg, sizeof(msg));
+
+	close(parentToChildPipe[1]);
+	close(childToParentPipe[0]);
 }
 
 __attribute__((visibility ("default"))) pid_t forkfix___fork(void)
@@ -130,6 +111,10 @@ __attribute__((visibility ("default"))) pid_t forkfix___fork(void)
 __attribute__((visibility ("default"))) pid_t forkfix_fork(int is_vfork, bool mightHaveDirtyPages)
 {
 	int ret;
+
+	if (pipe(parentToChildPipe) < 0 || pipe(childToParentPipe) < 0) {
+		return -1;
+	}
 
 	if (_libSystem_atfork_prepare_V2) {
 		_libSystem_atfork_prepare_V2(is_vfork);
