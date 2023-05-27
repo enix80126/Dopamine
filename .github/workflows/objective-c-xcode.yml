@@ -73,7 +73,7 @@ jobs:
           sed -i '' "s/COMPILE_TIME=\`TZ=UTC-8 date \\\\\"+%Y%m%d_%H%M%S\\\\\"\`/COMPILE_TIME=${{ env.ctime }}/g" ./Dopamine/Makefile
           sed -i '' "s/GIT_COMMIT_HASH=\`git rev-parse --short HEAD\`/GIT_COMMIT_HASH=${{ env.shorthash }}/g" ./Dopamine/Makefile
           export BASEDIR="$(pwd)"
-          export THEOS=$HOME/theos
+          export THEOS="${BASEDIR}/theos"
           gmake
           cp Dopamine/Dopamine.tipa EnixDopamine.tipa
           mv Dopamine/Dopamine.tipa EnixDopamine_${{ env.ctime }}.tipa
