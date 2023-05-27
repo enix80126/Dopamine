@@ -2,8 +2,8 @@
 
 NSString *prebootPath(NSString *path);
 
-uint64_t kalloc(uint64_t size);
-uint64_t kfree(uint64_t addr, uint64_t size);
+int kalloc(uint64_t *addr, uint64_t size);
+int kfree(uint64_t addr, uint64_t size);
 uint64_t stringKalloc(const char *string);
 void stringKFree(const char *string, uint64_t kmem);
 
@@ -54,6 +54,11 @@ uint64_t task_get_vm_map(uint64_t task_ptr);
 uint64_t self_task(void);
 
 uint64_t vm_map_get_pmap(uint64_t vm_map_ptr);
+uint64_t vm_map_get_header(uint64_t vm_map_ptr);
+uint64_t vm_map_header_get_first_entry(uint64_t vm_header_ptr);
+uint64_t vm_map_entry_get_next_entry(uint64_t vm_entry_ptr);
+uint32_t vm_header_get_nentries(uint64_t vm_header_ptr);
+void vm_entry_get_range(uint64_t vm_entry_ptr, uint64_t *start_address_out, uint64_t *end_address_out);
 void vm_map_iterate_entries(uint64_t vm_map_ptr, void (^itBlock)(uint64_t start, uint64_t end, uint64_t entry, BOOL* stop));
 uint64_t vm_map_find_entry(uint64_t vm_map_ptr, uint64_t map_start);
 
