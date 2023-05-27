@@ -73,8 +73,7 @@ jobs:
           name: Dopamine_Latest
           path: |
             ${{ github.workspace }}/Dopamine/Dopamine_Latest.tipa
-      - name: Upload Hashed Artifact
-        id: dopamine-hashed-upload
+      - name: Releas
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.ctime }}
