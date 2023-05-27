@@ -78,7 +78,5 @@ jobs:
         with:
           tag_name: ${{ env.ctime }}
           name: Dopamine_${{ env.shorthash }}_${{ env.ctime }}
-          path: |
-            ${{ github.workspace }}/Dopamine/Dopamine_${{ env.shorthash }}_${{ env.ctime }}.tipa
           files: |
            *.tipa
